@@ -7,6 +7,6 @@ This project maps the results of the 2020 U.S. presidential election using FIPS,
 
 This project requires the following R packages: _tidyverse, lubridate, usmap, gridExtra_
 
-Election data is courtesy of the New York Times. 
+Election data is from November 15, 2020, and is courtesy of the New York Times. Sample maps can be found in the _.pdf_ file.
 
 NOTE: This project does not account for the split electoral votes in Maine and Nebraska. This project awards all four Maine votes to Joe Biden, and all five Nebraska votes to Donald Trump. However, this does not impact the total number electoral votes for either candidate, as Biden won one vote in Nebraska and Trump won one vote in Maine.
