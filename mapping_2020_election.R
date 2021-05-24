@@ -1,0 +1,187 @@
+# Jonah Pryor
+# Created: December 18, 2020
+# Updated: May 24, 2021
+
+library(tidyverse)
+library(lubridate)
+library(usmap)
+library(gridExtra)
+
+# import data
+presidential<-read.csv("C:/Users/jonah/Downloads/USElection2020-NYT-Results-master/USElection2020-NYT-Results-master/data/latest/presidential.csv")
+electiondata=presidential
+
+electoralvotes<-read.csv("C:/Users/jonah/Downloads/electoralvotes.csv")
+
+# Creating our function
+plot_election_results<-function(electoral=F,vote_type="total",region=c()) # default arguments
+{
+  # new data frame
+  
+  newdata=electiondata[,c("fips","votes","absentee_votes","results_trumpd","results_bidenj","results_absentee_trumpd","results_absentee_bidenj","state")]
+  newdata=dplyr::filter(newdata)%>%arrange(fips)
+  newdata=newdata[,c("votes","absentee_votes","results_trumpd","results_bidenj","results_absentee_trumpd","results_absentee_bidenj","state")]
+  newdata=aggregate(. ~ state,newdata,sum)
+  
+  
+  fips <- statepop$fips
+  newdata=cbind(newdata,fips)
+  newdata=newdata[,c(8,1,2,3,4,5,6,7)]
+  
+  # calculate in person, absentee, and total percentages for Biden and Trump, respectively
+  # Then add those new variables to data frame
+
+  newdata = transform(newdata, pct_tot_biden = results_bidenj / votes)
+  newdata = transform(newdata, pct_tot_trump = results_trumpd / votes)
+  newdata = transform(newdata, pct_absentee_biden = results_absentee_bidenj / absentee_votes)
+  newdata = transform(newdata, pct_absentee_trump = results_absentee_trumpd / absentee_votes)
+  newdata = transform(newdata, pct_inperson_biden = (results_bidenj - results_absentee_bidenj) / (votes - absentee_votes))
+  newdata = transform(newdata, pct_inperson_trump = (results_trumpd - results_absentee_trumpd) / (votes - absentee_votes))
+  
+  newdata=cbind(newdata,electoralvotes$number.of.votes)
+  names(newdata)[15] <- "electoral_votes"
+  
+  
+  state_centers=usmap_transform(tibble(state.center$x,state.center$y,state.name))
+  head(state_centers)
+  ecdata=newdata
+  ecdata=ecdata[-9,] # Removes value for Washington, D.C for state coordinate purposes
+  ecdata=mutate(ecdata,center_long=state_centers$state.center.x.1,center_lat=state_centers$state.center.y.1)
+  
+  ecdata[2,16]=-1203560
+  ecdata[2,17]=-1837070
+  ecdata[11,16]=-450000
+  ecdata[11,17]=-2130070
+  
+  x=c(1:50)
+  x
+  ec_tot_winner = vector()
+  for (val in x)
+  {
+    if((ecdata$results_bidenj[val]) > (ecdata$results_trumpd[val]))
+    {
+      ec_tot_winner[val]="Biden"
+    }
+    else
+    {
+      ec_tot_winner[val]="Trump"
+    }
+  }
+  ecdata=cbind(ecdata,ec_tot_winner)
+  
+  
+  ec_abs_winner = vector()
+  for (val in x)
+  {
+    if((ecdata$results_absentee_bidenj[val]) > (ecdata$results_absentee_trumpd[val]))
+    {
+      ec_abs_winner[val]="Biden"
+    }
+    else
+    {
+      ec_abs_winner[val]="Trump"
+    }
+  }
+  ecdata=cbind(ecdata,ec_abs_winner)
+  
+  
+  ec_ip_winner = vector()
+  for (val in x)
+  {
+    if((ecdata$pct_inperson_biden[val]) > (ecdata$pct_inperson_trump[val]))
+    {
+      ec_ip_winner[val]="Biden"
+    }
+    else
+    {
+      ec_ip_winner[val]="Trump"
+    }
+  }
+  ecdata=cbind(ecdata,ec_ip_winner)
+  
+  evotestot=aggregate(ecdata$electoral_votes,by=list(ecdata$ec_tot_winner),FUN=sum)
+  evotesabs=aggregate(ecdata$electoral_votes,by=list(ecdata$ec_abs_winner),FUN=sum)
+  evotesip=aggregate(ecdata$electoral_votes,by=list(ecdata$ec_ip_winner),FUN=sum)
+  
+  if(!(electoral))
+  {
+    if(vote_type=="total")
+    {
+      plot_usmap(data = newdata, values = "pct_tot_biden", regions="states", include=region) + 
+        scale_fill_continuous(
+          low = "red", high = "blue", name = "Percent for Biden", label = scales::comma
+        ) + theme(legend.position = "right") +
+        ggtitle("Percent of Popular Vote") +
+        theme(plot.title = element_text(size=14))
+    }
+    else if(vote_type=="absentee")
+    {
+      plot_usmap(data = newdata, values = "pct_absentee_biden", regions="states", include=region) + 
+        scale_fill_continuous(
+          low = "red", high = "blue", name = "Percent for Biden", label = scales::comma
+        ) + theme(legend.position = "right") +
+        ggtitle("Percent of Absentee Votes") +
+        theme(plot.title = element_text(size=14))
+    }
+    else if(vote_type=="in-person")
+    {
+      plot_usmap(data = newdata, values = "pct_inperson_biden", regions="states", include=region) + 
+        scale_fill_continuous(
+          low = "red", high = "blue", name = "Percent for Biden", label = scales::comma
+        ) + theme(legend.position = "right") +
+        ggtitle("Percent of In-Person Votes") +
+        theme(plot.title = element_text(size=14))
+    }
+    else
+    {
+      stop("Invalid input")
+    }
+  }  
+  else if(electoral)
+  {
+    if(vote_type=="total")
+    {
+      plot_usmap(data=ecdata,values="ec_tot_winner", regions="states",include=region) +
+        scale_fill_manual(values = c(`Biden` = "blue", `Trump` = "red"), name = "Candidate",labels=c("Biden", "Trump"))+
+        theme(legend.position = "right") +
+        geom_text(data=ecdata,aes(x=center_long,y=center_lat,label=electoral_votes)) +
+        ggtitle("Electoral College Results \nBiden: 306 Electoral Votes \nTrump: 232 Electoral Votes") +
+        theme(plot.title = element_text(size=14))
+    }
+    else if(vote_type=="absentee")
+    {
+      plot_usmap(data=ecdata,values="ec_abs_winner", regions="states",include=region) +
+        scale_fill_manual(values = c(`Biden` = "blue", `Trump` = "red"), name = "Candidate",labels=c("Biden", "Trump"))+
+        theme(legend.position = "right") +
+        geom_text(data=ecdata,aes(x=center_long,y=center_lat,label=electoral_votes)) +
+        ggtitle("Electoral College Results Based on Absentee Votes \nBiden: 354 Electoral Votes \nTrump: 184 Electoral Votes") +
+        theme(plot.title = element_text(size=14))
+    }
+    else if(vote_type=="in-person")
+    {
+      plot_usmap(data=ecdata,values="ec_ip_winner", regions="states",include=region) +
+        scale_fill_manual(values = c(`Biden` = "blue", `Trump` = "red"), name = "Candidate",labels=c("Biden", "Trump"))+
+        theme(legend.position = "right") +
+        geom_text(data=ecdata,aes(x=center_long,y=center_lat,label=electoral_votes)) +
+        ggtitle("Electoral College Results Based on In-Person Votes \nBiden: 230 Electoral Votes \nTrump: 308 Electoral Votes") +
+        theme(plot.title = element_text(size=14))
+    }
+    else
+    {
+      stop("Invalid input")
+    }
+  }
+  
+  
+  
+}  
+
+
+
+# Testing 
+plot_election_results(electoral=T,vote_type = "total")
+plot_election_results(electoral=T,vote_type = "absentee")
+plot_election_results(electoral=F,vote_type = "total",region=.south_region)
+plot_election_results(electoral=F,vote_type = "in-person",region=.pacific)
+
+
