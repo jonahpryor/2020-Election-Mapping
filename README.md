@@ -9,4 +9,4 @@ This project requires the following R packages: _tidyverse, lubridate, usmap, gr
 
 Election data is courtesy of the New York Times. 
 
-NOTE: This project does not account for the split electoral votes in Maine and Nebraska. This project awards all four Maine votes to Joe Biden, and all five Nebraska votes to Donald Trump. However, this does not impact the total number electoral votes for either candidate, as Biden won one vote and Nebraska and Trump won one vote in Maine.
+NOTE: This project does not account for the split electoral votes in Maine and Nebraska. This project awards all four Maine votes to Joe Biden, and all five Nebraska votes to Donald Trump. However, this does not impact the total number electoral votes for either candidate, as Biden won one vote in Nebraska and Trump won one vote in Maine.
